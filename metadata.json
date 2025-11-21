@@ -1,0 +1,8 @@
+{
+  "name": "Lumena AI",
+  "description": "An adaptive AI companion for holistic dyslexia support, offering personalized roadmaps, focus tracking, and emotional encouragement.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

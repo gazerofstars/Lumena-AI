@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lumena - Dyslexia Support Companion</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Open+Sans:wght@400;600;700&family=Lexend:wght@300;400;600&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'lumena-cream': '#FAF7F0', // Reduced glare background
+              'lumena-blue': '#D4E6F1',  // Calming overlay
+              'lumena-dark': '#2C3E50',  // High contrast text (soft black)
+              'lumena-accent': '#5DADE2',
+              'lumena-success': '#82E0AA',
+            },
+            fontFamily: {
+              'comic': ['"Comic Neue"', 'cursive'],
+              'open': ['"Open Sans"', 'sans-serif'],
+              'lexend': ['"Lexend"', 'sans-serif'], // Specifically designed for reading proficiency
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      /* Custom Scrollbar for accessibility */
+      ::-webkit-scrollbar {
+        width: 12px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #f1f1f1; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #888; 
+        border-radius: 6px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #555; 
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0"
+  }
+}
+</script>
+</head>
+  <body class="bg-lumena-cream text-lumena-dark transition-colors duration-300">
+    <div id="root"></div>
+  </body>
+</html>

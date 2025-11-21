@@ -1,0 +1,276 @@
+
+import { GoogleGenAI, Modality, Type } from "@google/genai";
+import { Task, StudyLog } from "../types";
+
+const getClient = () => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) throw new Error("API Key not found");
+  return new GoogleGenAI({ apiKey });
+};
+
+// 1. Generate Prioritized Roadmap from Brain Dump
+export const generateRoadmap = async (input: string): Promise<Task[]> => {
+  const ai = getClient();
+  
+  const prompt = `
+    I am a student with dyslexia who feels overwhelmed. Here is a raw list of everything I need to do:
+    "${input}"
+
+    Please act as an executive function coach. 
+    1. Analyze these tasks.
+    2. Sort them by priority (Highest Impact/Urgency first).
+    3. Break down any vaguely worded tasks into clearer steps.
+    4. Assign a realistic time estimate (in minutes) for each.
+    
+    Return the response as a JSON array of tasks.
+  `;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            id: { type: Type.STRING },
+            title: { type: Type.STRING },
+            description: { type: Type.STRING },
+            estimatedTime: { type: Type.NUMBER, description: "Time in minutes" },
+            completed: { type: Type.BOOLEAN }
+          },
+          required: ["id", "title", "description", "estimatedTime"]
+        }
+      }
+    }
+  });
+
+  if (response.text) {
+    return JSON.parse(response.text);
+  }
+  return [];
+};
+
+// 2. Emotional Support / Chat
+export const getCompanionResponse = async (history: {role: string, text: string}[], message: string) => {
+  const ai = getClient();
+  
+  const systemInstruction = `
+    You are Lumena, a supportive, empathetic, and patient AI study companion for a student with dyslexia.
+    
+    Your Core Rules:
+    1. **Simple Language**: Use short sentences and easy words. Avoid metaphors.
+    2. **Empathy First**: Validated feelings. If the user is sad, be kind.
+    3. **Sensitive Topics**: 
+       - If the user mentions **bullying**, **depression**, or **sadness**: Provide very simple, comforting advice. Remind them they are brave. Gently suggest talking to a trusted adult, parent, or teacher.
+    4. **Overwhelm & Games**:
+       - If the user feels **overwhelmed** or **stressed**: Offer to play a quick, simple game to distract them (like "I Spy", "20 Questions", or "Two Truths and a Lie") OR guide them through a simple breathing exercise (Box Breathing).
+    5. **Formatting**: Use bullet points for lists. Keep responses under 60 words unless playing a game.
+  `;
+
+  // Map history to API format if needed, but for simple calls we can use chat
+  const chat = ai.chats.create({
+    model: "gemini-2.5-flash",
+    config: { systemInstruction },
+    history: history.map(h => ({ role: h.role, parts: [{ text: h.text }] }))
+  });
+
+  const result = await chat.sendMessage({ message });
+  return result.text;
+};
+
+// 3. Text-to-Speech (TTS)
+export const speakText = async (text: string): Promise<string | null> => {
+  const ai = getClient();
+  
+  try {
+    const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash-preview-tts",
+        contents: [{ parts: [{ text }] }],
+        config: {
+            responseModalities: [Modality.AUDIO],
+            speechConfig: {
+                voiceConfig: {
+                    prebuiltVoiceConfig: { voiceName: 'Kore' }, // 'Kore' is calm and clear
+                },
+            },
+        },
+    });
+
+    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    return base64Audio || null;
+  } catch (e) {
+    console.error("TTS Error:", e);
+    return null;
+  }
+};
+
+// 4. Focus Analysis (Vision)
+export const analyzeFocus = async (imageBase64: string): Promise<{status: 'FOCUSED' | 'DISTRACTED' | 'ABSENT', message: string}> => {
+    const ai = getClient();
+    
+    const prompt = `
+      Analyze this webcam frame of a student studying. 
+      Determine their status:
+      - 'ABSENT': No person is visible in the frame.
+      - 'DISTRACTED': Person is visible but yawning, sleeping, eyes closed, looking away for a long time, or using a phone.
+      - 'FOCUSED': Person is looking at the screen, reading, or writing.
+
+      Provide a short message (1 sentence) appropriate for the status.
+      If DISTRACTED, suggest a specific quick stretch (e.g., "Roll your shoulders").
+      Return JSON.
+    `;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: {
+                parts: [
+                    { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
+                    { text: prompt }
+                ]
+            },
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        status: { type: Type.STRING, enum: ['FOCUSED', 'DISTRACTED', 'ABSENT'] },
+                        message: { type: Type.STRING }
+                    }
+                }
+            }
+        });
+
+        if (response.text) {
+            return JSON.parse(response.text);
+        }
+    } catch (e) {
+        console.error("Vision Error", e);
+    }
+    
+    return { status: 'FOCUSED', message: "Keep up the great work!" };
+};
+
+// 5. Simplify Text
+export const simplifyText = async (text: string): Promise<string> => {
+    const ai = getClient();
+    const prompt = `
+      Rewrite the following text to be easier to read and understand for someone with dyslexia. 
+      - Use simpler words.
+      - Break long sentences into shorter ones.
+      - Use bullet points if appropriate.
+      - Keep the original meaning.
+      
+      Text to simplify:
+      "${text}"
+    `;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt
+        });
+        return response.text || "Could not simplify text.";
+    } catch (e) {
+        console.error("Simplification Error:", e);
+        return "Error simplifying text. Please try again.";
+    }
+};
+
+// 6. OCR (Extract Text from Image)
+export const extractTextFromImage = async (base64Image: string, mimeType: string): Promise<string> => {
+    const ai = getClient();
+    const prompt = "Extract all readable text from this image. Format it nicely.";
+    
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash", // Flash is good for OCR
+            contents: {
+                parts: [
+                    { inlineData: { mimeType, data: base64Image } },
+                    { text: prompt }
+                ]
+            }
+        });
+        return response.text || "";
+    } catch (e) {
+        console.error("OCR Error:", e);
+        return "Error extracting text from image.";
+    }
+};
+
+// 7. Generate Study Insights
+export const generateStudyInsights = async (logs: StudyLog[]): Promise<string> => {
+  const ai = getClient();
+  
+  const logSummary = logs.slice(0, 5).map(l => 
+    `- ${l.taskTitle}: ${l.durationMinutes} mins, ${l.distractionCount} distractions. Status: ${l.completed ? 'Completed' : 'Not finished'}.`
+  ).join('\n');
+
+  const prompt = `
+    You are a helpful study coach for a student with dyslexia.
+    Here is their recent activity log:
+    ${logSummary}
+
+    Based on this data, provide 3 short, personalized, and encouraging tips to help them improve their focus or schedule.
+    Talk directly to them. Use simple language. Focus on positives and gentle improvements.
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt
+    });
+    return response.text || "Keep up the great work! Try shorter sessions with more breaks.";
+  } catch (e) {
+    console.error("Insights Error:", e);
+    return "Great job studying! Remember to take breaks to keep your brain fresh.";
+  }
+};
+
+// 8. Get Word Definition (Simple)
+export const getWordDefinition = async (word: string): Promise<string> => {
+    const ai = getClient();
+    const prompt = `
+      Define the word "${word}" in a very simple, easy-to-understand way for a student. 
+      Keep the definition under 15 words.
+    `;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt
+        });
+        return response.text?.trim() || "Definition not found.";
+    } catch (e) {
+        console.error("Definition Error:", e);
+        return "Could not load definition.";
+    }
+};
+
+// 9. Get Phonics Breakdown
+export const getPhonicsBreakdown = async (word: string): Promise<string> => {
+    const ai = getClient();
+    const prompt = `
+      Break down the word "${word}" into its distinct phonemes/sounds for a dyslexic student learning to read.
+      Write it phonetically so a text-to-speech engine will pronounce the sounds (not letter names).
+      Use hyphens to separate sounds.
+      Example: "Cat" -> "Kuh - aah - tuh"
+      Example: "Phone" -> "Fff - oh - nn"
+      Return ONLY the phonetic string.
+    `;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt
+        });
+        return response.text?.trim() || word.split('').join(' - ');
+    } catch (e) {
+        console.error("Phonics Error:", e);
+        return word.split('').join(' - ');
+    }
+};
