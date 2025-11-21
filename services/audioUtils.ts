@@ -164,6 +164,11 @@ export const playWinSound = () => {
   playNote(659.25, now + 0.1, 0.2); // E5
   playNote(783.99, now + 0.2, 0.2); // G5
   playNote(1046.50, now + 0.3, 0.6); // C6
+
+  // CRITICAL FIX: Close context after sound finishes to prevent resource leak
+  setTimeout(() => {
+      if (ctx.state !== 'closed') ctx.close();
+  }, 1000);
 };
 
 /**
@@ -186,6 +191,11 @@ export const playAlertSound = () => {
   
   osc.start();
   osc.stop(ctx.currentTime + 0.3);
+
+  // CRITICAL FIX: Close context after sound finishes
+  setTimeout(() => {
+      if (ctx.state !== 'closed') ctx.close();
+  }, 400);
 };
 
 /**
