@@ -11,7 +11,14 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     define: {
       // This ensures process.env.GEMINI_API_KEY works in the code as written
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY || env.API_KEY),
+      // We check multiple common names to make it easier for the user on Vercel
+      'process.env.GEMINI_API_KEY': JSON.stringify(
+        env.VITE_GEMINI_API_KEY || 
+        env.GEMINI_API_KEY || 
+        env.API_KEY || 
+        process.env.GEMINI_API_KEY || 
+        process.env.VITE_GEMINI_API_KEY
+      ),
       // Safe polyfill for other process.env access if necessary
       'process.env': {}
     },

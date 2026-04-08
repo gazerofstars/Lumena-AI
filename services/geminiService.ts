@@ -4,7 +4,9 @@ import { Task, StudyLog } from "../types";
 
 const getClient = () => {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY not found in environment");
+  if (!apiKey || apiKey === "undefined" || apiKey === "") {
+    throw new Error("API_KEY_MISSING");
+  }
   return new GoogleGenAI({ apiKey });
 };
 
@@ -203,9 +205,18 @@ export const simplifyText = async (text: string): Promise<string> => {
             contents: prompt
         });
         return response.text || "Could not simplify text.";
-    } catch (e) {
+    } catch (e: any) {
         console.error("Simplification Error:", e);
-        return "Error simplifying text. Please try again.";
+        if (e.message === "API_KEY_MISSING") {
+            return "Error: Gemini API Key is missing. Please set GEMINI_API_KEY in your Vercel environment variables and redeploy.";
+        }
+        if (e.message?.includes("API key not valid")) {
+            return "Error: The Gemini API Key provided is invalid. Please check your settings.";
+        }
+        if (e.message?.includes("SAFETY")) {
+            return "Error: This content was flagged by safety filters. Please try different text.";
+        }
+        return "Error simplifying text. Please check your API key and connection.";
     }
 };
 
