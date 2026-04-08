@@ -10,8 +10,8 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     define: {
-      // This ensures process.env.API_KEY works in the code as written
-      'process.env.API_KEY': JSON.stringify(env.API_KEY),
+      // This ensures process.env.GEMINI_API_KEY works in the code as written
+      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY || env.API_KEY),
       // Safe polyfill for other process.env access if necessary
       'process.env': {}
     },

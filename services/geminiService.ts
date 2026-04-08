@@ -3,8 +3,8 @@ import { GoogleGenAI, Modality, Type } from "@google/genai";
 import { Task, StudyLog } from "../types";
 
 const getClient = () => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) throw new Error("API Key not found");
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY not found in environment");
   return new GoogleGenAI({ apiKey });
 };
 
