@@ -40,7 +40,7 @@ export const ChatCompanion: React.FC = () => {
       setMessages(prev => [...prev, aiMsg]);
 
       // Auto-speak if enabled
-      if (settings.voiceEnabled) {
+      if (settings.voiceEnabled && responseText) {
         const audio = await speakText(responseText);
         if (audio) playPcmAudio(audio);
       }

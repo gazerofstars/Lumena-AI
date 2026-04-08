@@ -26,7 +26,7 @@ export const generateRoadmap = async (input: string): Promise<Task[]> => {
   `;
 
   const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
+    model: "gemini-3-flash-preview",
     contents: prompt,
     config: {
       responseMimeType: "application/json",
@@ -72,39 +72,55 @@ export const getCompanionResponse = async (history: {role: string, text: string}
 
   // Map history to API format if needed, but for simple calls we can use chat
   const chat = ai.chats.create({
-    model: "gemini-2.5-flash",
+    model: "gemini-3-flash-preview",
     config: { systemInstruction },
     history: history.map(h => ({ role: h.role, parts: [{ text: h.text }] }))
   });
 
   const result = await chat.sendMessage({ message });
-  return result.text;
+  return result.text || "I'm sorry, I couldn't think of a response. Can you try again?";
 };
 
 // 3. Text-to-Speech (TTS)
 export const speakText = async (text: string): Promise<string | null> => {
+  if (!text || text.trim().length === 0) return null;
   const ai = getClient();
   
-  try {
-    const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash-preview-tts",
-        contents: [{ parts: [{ text }] }],
-        config: {
-            responseModalities: [Modality.AUDIO],
-            speechConfig: {
-                voiceConfig: {
-                    prebuiltVoiceConfig: { voiceName: 'Kore' }, // 'Kore' is calm and clear
-                },
-            },
-        },
-    });
+  // Sanitize text: remove excessive whitespace and potentially problematic characters
+  const sanitizedText = text.trim().replace(/\s+/g, ' ').slice(0, 3000);
 
-    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    return base64Audio || null;
-  } catch (e) {
-    console.error("TTS Error:", e);
-    return null;
-  }
+  const attemptTTS = async (voice: string, retryCount: number = 0): Promise<string | null> => {
+    try {
+      const response = await ai.models.generateContent({
+          model: "gemini-2.5-flash-preview-tts",
+          contents: [{ parts: [{ text: sanitizedText }] }],
+          config: {
+              responseModalities: [Modality.AUDIO],
+              speechConfig: {
+                  voiceConfig: {
+                      prebuiltVoiceConfig: { voiceName: voice },
+                  },
+              },
+          },
+      });
+
+      const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+      return base64Audio || null;
+    } catch (e: any) {
+      console.error(`TTS Attempt ${retryCount + 1} failed (${voice}):`, e);
+      
+      // If it's a 500 error and we have retries left, try again with a different voice
+      if (retryCount < 2) {
+          const nextVoice = retryCount === 0 ? 'Puck' : 'Zephyr';
+          // Wait a bit before retrying
+          await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+          return attemptTTS(nextVoice, retryCount + 1);
+      }
+      return null;
+    }
+  };
+
+  return attemptTTS('Kore');
 };
 
 // 4. Focus Analysis (Vision)
@@ -125,7 +141,7 @@ export const analyzeFocus = async (imageBase64: string): Promise<{status: 'FOCUS
 
     try {
         const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-flash-preview",
             contents: {
                 parts: [
                     { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
@@ -170,7 +186,7 @@ export const simplifyText = async (text: string): Promise<string> => {
 
     try {
         const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-flash-preview",
             contents: prompt
         });
         return response.text || "Could not simplify text.";
@@ -187,7 +203,7 @@ export const extractTextFromImage = async (base64Image: string, mimeType: string
     
     try {
         const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash", // Flash is good for OCR
+            model: "gemini-3-flash-preview", // Flash is good for OCR
             contents: {
                 parts: [
                     { inlineData: { mimeType, data: base64Image } },
@@ -221,7 +237,7 @@ export const generateStudyInsights = async (logs: StudyLog[]): Promise<string> =
 
   try {
     const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3-flash-preview",
         contents: prompt
     });
     return response.text || "Keep up the great work! Try shorter sessions with more breaks.";
@@ -241,7 +257,7 @@ export const getWordDefinition = async (word: string): Promise<string> => {
 
     try {
         const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-flash-preview",
             contents: prompt
         });
         return response.text?.trim() || "Definition not found.";
@@ -265,7 +281,7 @@ export const getPhonicsBreakdown = async (word: string): Promise<string> => {
 
     try {
         const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-flash-preview",
             contents: prompt
         });
         return response.text?.trim() || word.split('').join(' - ');
