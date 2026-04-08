@@ -86,8 +86,13 @@ export const speakText = async (text: string): Promise<string | null> => {
   if (!text || text.trim().length === 0) return null;
   const ai = getClient();
   
-  // Sanitize text: remove excessive whitespace and potentially problematic characters
-  const sanitizedText = text.trim().replace(/\s+/g, ' ').slice(0, 3000);
+  // Sanitize text: remove excessive whitespace, markdown symbols, and limit length
+  // 500 errors are often caused by too much text or problematic characters
+  const sanitizedText = text
+    .trim()
+    .replace(/[*_#`~]/g, '') // Remove common markdown formatting
+    .replace(/\s+/g, ' ')
+    .slice(0, 1000); // Reduced limit for better stability
 
   const attemptTTS = async (voice: string, retryCount: number = 0): Promise<string | null> => {
     try {
@@ -105,22 +110,30 @@ export const speakText = async (text: string): Promise<string | null> => {
       });
 
       const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-      return base64Audio || null;
+      if (!base64Audio) throw new Error("No audio data in response");
+      return base64Audio;
     } catch (e: any) {
-      console.error(`TTS Attempt ${retryCount + 1} failed (${voice}):`, e);
-      
-      // If it's a 500 error and we have retries left, try again with a different voice
+      // Only log as warning for first attempts to reduce noise if retries work
       if (retryCount < 2) {
-          const nextVoice = retryCount === 0 ? 'Puck' : 'Zephyr';
-          // Wait a bit before retrying
-          await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+          console.warn(`TTS Attempt ${retryCount + 1} failed (${voice}). Retrying...`);
+      } else {
+          console.error(`TTS Final Attempt failed (${voice}):`, e);
+      }
+      
+      if (retryCount < 2) {
+          // Try different voices in order: Charon (Deep), Puck (Youthful), Zephyr (Soft)
+          const voices = ['Charon', 'Puck', 'Zephyr'];
+          const nextVoice = voices[retryCount] || 'Zephyr';
+          
+          await new Promise(resolve => setTimeout(resolve, 1500 * (retryCount + 1)));
           return attemptTTS(nextVoice, retryCount + 1);
       }
       return null;
     }
   };
 
-  return attemptTTS('Kore');
+  // Starting with 'Charon' as it tends to be very stable for long text
+  return attemptTTS('Charon');
 };
 
 // 4. Focus Analysis (Vision)
