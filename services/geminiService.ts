@@ -162,27 +162,15 @@ export const analyzeFocus = async (imageBase64: string): Promise<{status: 'FOCUS
     try {
         const ai = getClient();
         
-        const prompt = `
-          Analyze this webcam frame of a student studying. 
-          Determine their status:
-          - 'ABSENT': No person is visible in the frame.
-          - 'DISTRACTED': Person is visible but yawning, sleeping, eyes closed, looking away for a long time, or using a phone.
-          - 'FOCUSED': Person is looking at the screen, reading, or writing.
-
-          Provide a short message (1 sentence) appropriate for the status.
-          If DISTRACTED, suggest a specific quick stretch (e.g., "Roll your shoulders").
-          Return JSON.
-        `;
+        const systemInstruction = `Analyze student focus. Status: ABSENT (no person), DISTRACTED (yawning/phone/sleeping), FOCUSED. Return JSON with status and short 1-sentence message.`;
 
         const response = await ai.models.generateContent({
             model: "gemini-3-flash-preview",
             contents: {
-                parts: [
-                    { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
-                    { text: prompt }
-                ]
+                parts: [{ inlineData: { mimeType: "image/jpeg", data: imageBase64 } }]
             },
             config: {
+                systemInstruction,
                 responseMimeType: "application/json",
                 responseSchema: {
                     type: Type.OBJECT,

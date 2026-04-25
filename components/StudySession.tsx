@@ -324,12 +324,15 @@ const ActiveSession: React.FC<{
     const ctx = canvasRef.current.getContext('2d');
     if (!ctx) return;
 
-    // Capture frame
-    canvasRef.current.width = videoRef.current.videoWidth;
-    canvasRef.current.height = videoRef.current.videoHeight;
-    ctx.drawImage(videoRef.current, 0, 0);
+    // Capture frame at a lower resolution for better performance
+    const captureWidth = 400;
+    const aspectRatio = videoRef.current.videoWidth / videoRef.current.videoHeight;
+    canvasRef.current.width = captureWidth;
+    canvasRef.current.height = captureWidth / aspectRatio;
+    ctx.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
     
-    const base64Image = canvasRef.current.toDataURL('image/jpeg').split(',')[1];
+    // Use a lower quality for the JPEG to further reduce size
+    const base64Image = canvasRef.current.toDataURL('image/jpeg', 0.5).split(',')[1];
     
     try {
         const result = await analyzeFocus(base64Image);
