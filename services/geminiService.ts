@@ -1,5 +1,5 @@
 
-import { GoogleGenAI, Modality, Type, ThinkingLevel } from "@google/genai";
+import { GoogleGenAI, Modality, Type } from "@google/genai";
 import { Task, StudyLog } from "../types";
 
 const getClient = () => {
@@ -162,23 +162,31 @@ export const analyzeFocus = async (imageBase64: string): Promise<{status: 'FOCUS
     try {
         const ai = getClient();
         
-        const systemInstruction = `Analyze student focus. Status: ABSENT (no person), DISTRACTED (yawning/phone/sleeping), FOCUSED. Return JSON with status and short 1-sentence message.`;
+        const prompt = `Analyze student focus in this frame.
+          Determine their status:
+          - 'ABSENT': No person is visible.
+          - 'DISTRACTED': Person is yawning, on phone, eyes closed, or looking away.
+          - 'FOCUSED': Person is reading, writing, or looking at screen.
+          
+          Return JSON with status and 1-sentence message.`;
 
         const response = await ai.models.generateContent({
             model: "gemini-3-flash-preview",
             contents: {
-                parts: [{ inlineData: { mimeType: "image/jpeg", data: imageBase64 } }]
+                parts: [
+                    { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
+                    { text: prompt }
+                ]
             },
             config: {
-                systemInstruction,
-                thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
                 responseMimeType: "application/json",
                 responseSchema: {
                     type: Type.OBJECT,
                     properties: {
                         status: { type: Type.STRING, enum: ['FOCUSED', 'DISTRACTED', 'ABSENT'] },
                         message: { type: Type.STRING }
-                    }
+                    },
+                    required: ["status", "message"]
                 }
             }
         });
