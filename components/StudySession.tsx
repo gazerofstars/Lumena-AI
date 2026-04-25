@@ -353,11 +353,11 @@ const ActiveSession: React.FC<{
 
   }, [cameraActive]);
 
-  // Check focus every 15 seconds if active and not already interrupted
+  // Check focus every 60 seconds if active and not already interrupted
   useEffect(() => {
     let focusInterval: any;
     if (isActive && cameraActive && !isDistractedMode && !showExercise) {
-        focusInterval = setInterval(checkFocus, 15000); 
+        focusInterval = setInterval(checkFocus, 60000); 
     }
     return () => clearInterval(focusInterval);
   }, [isActive, cameraActive, checkFocus, isDistractedMode, showExercise]);

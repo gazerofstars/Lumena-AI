@@ -10,6 +10,7 @@ import { ChatCompanion } from './components/ChatCompanion';
 import { AIReader } from './components/AIReader';
 import { SettingsPage } from './components/SettingsPage';
 import { ParentDashboard } from './components/ParentDashboard';
+import { BottomNav } from './components/BottomNav';
 import { View, Task } from './types';
 
 const AppContent: React.FC = () => {
@@ -38,7 +39,7 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col pb-16 md:pb-0">
       <Header currentView={currentView} setView={setCurrentView} />
       
       <main className="flex-1 container mx-auto px-4 py-6">
@@ -80,6 +81,8 @@ const AppContent: React.FC = () => {
           <ParentDashboard onBack={() => setCurrentView(View.SETTINGS)} />
         )}
       </main>
+
+      <BottomNav currentView={currentView} setView={setCurrentView} />
     </div>
   );
 };

@@ -66,9 +66,9 @@ export const Header: React.FC<HeaderProps> = ({ currentView, setView }) => {
         {/* Right Side: Gamification & Settings */}
         <div className="flex items-center gap-3">
             {/* Gamification Pills (Small View) */}
-            <div className="flex items-center gap-2 mr-2">
-                <div className="flex items-center gap-1 bg-yellow-50 text-yellow-700 px-3 py-1.5 rounded-full font-bold text-sm border border-yellow-200" title="Total Points">
-                    <Trophy size={16} />
+            <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 bg-yellow-50 text-yellow-700 px-2 sm:px-3 py-1 rounded-full font-bold text-xs sm:text-sm border border-yellow-200" title="Total Points">
+                    <Trophy size={14} className="sm:w-4 sm:h-4" />
                     <span>{stats.points}</span>
                 </div>
             </div>

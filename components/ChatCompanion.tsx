@@ -36,12 +36,17 @@ export const ChatCompanion: React.FC = () => {
       const history = messages.map(m => ({ role: m.role, text: m.text }));
       const responseText = await getCompanionResponse(history, userMsg.text);
       
-      const aiMsg: Message = { id: (Date.now() + 1).toString(), role: 'model', text: responseText };
+      let finalResponse = responseText;
+      if (responseText === "QUOTA_EXCEEDED") {
+          finalResponse = "I'm sorry, I've reached my limit for today! 🛑 You can wait a bit for my energy to recharge, or ask your parent to help me get more energy in the settings.";
+      }
+
+      const aiMsg: Message = { id: (Date.now() + 1).toString(), role: 'model', text: finalResponse };
       setMessages(prev => [...prev, aiMsg]);
 
       // Auto-speak if enabled
-      if (settings.voiceEnabled && responseText) {
-        const audio = await speakText(responseText);
+      if (settings.voiceEnabled && finalResponse && responseText !== "QUOTA_EXCEEDED") {
+        const audio = await speakText(finalResponse);
         if (audio) playPcmAudio(audio);
       }
 

@@ -324,7 +324,18 @@ export const AIReader: React.FC = () => {
                    onMouseUp={handleTextSelection}
                    className={`text-lg leading-loose text-gray-800 whitespace-pre-wrap p-4 bg-white/50 rounded-xl cursor-text selection:bg-yellow-200 selection:text-black ${settings.font === 'comic' ? 'font-comic' : settings.font === 'lexend' ? 'font-lexend' : 'font-open'}`}
                >
-                   {simplifiedText}
+                   {simplifiedText === "QUOTA_EXCEEDED" ? (
+                       <div className="bg-red-50 p-4 rounded-xl border border-red-100 text-red-700">
+                           <p className="font-bold mb-1">API Quota Exceeded</p>
+                           <p className="text-sm">
+                               You've reached the limit for the free tier. 
+                               Wait a minute for the limit to reset, or 
+                               <a href="https://aistudio.google.com/app/billing" target="_blank" rel="noopener noreferrer" className="underline font-bold ml-1">
+                                   set up billing
+                               </a> to increase your limits.
+                           </p>
+                       </div>
+                   ) : simplifiedText}
                </div>
            )}
         </div>

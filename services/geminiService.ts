@@ -86,8 +86,12 @@ export const getCompanionResponse = async (history: {role: string, text: string}
 
     const result = await chat.sendMessage({ message });
     return result.text || "I'm sorry, I couldn't think of a response. Can you try again?";
-  } catch (e) {
+  } catch (e: any) {
     console.error("Companion Error:", e);
+    const msg = e.message || String(e);
+    if (msg.includes("quota") || msg.includes("limit")) {
+        return "QUOTA_EXCEEDED";
+    }
     return "I'm having a little trouble thinking right now. Can we try again in a moment?";
   }
 };
@@ -234,7 +238,7 @@ export const simplifyText = async (text: string): Promise<string> => {
             return "Error: This content was flagged by safety filters. Please try different text.";
         }
         if (msg.includes("quota") || msg.includes("limit")) {
-            return "Error: API quota exceeded. Please try again later.";
+            return "QUOTA_EXCEEDED";
         }
         
         return `Error simplifying text: ${msg.slice(0, 100)}`;
@@ -292,8 +296,15 @@ export const generateStudyInsights = async (logs: StudyLog[]): Promise<string> =
   }
 };
 
+// Simple in-memory cache to reduce API calls
+const definitionCache: Record<string, string> = {};
+const phonicsCache: Record<string, string> = {};
+
 // 8. Get Word Definition (Simple)
 export const getWordDefinition = async (word: string): Promise<string> => {
+    const lowerWord = word.toLowerCase().trim();
+    if (definitionCache[lowerWord]) return definitionCache[lowerWord];
+
     try {
         const ai = getClient();
         const prompt = `
@@ -305,7 +316,9 @@ export const getWordDefinition = async (word: string): Promise<string> => {
             model: "gemini-3-flash-preview",
             contents: prompt
         });
-        return response.text?.trim() || "Definition not found.";
+        const definition = response.text?.trim() || "Definition not found.";
+        definitionCache[lowerWord] = definition;
+        return definition;
     } catch (e) {
         console.error("Definition Error:", e);
         return "Could not load definition.";
@@ -314,6 +327,9 @@ export const getWordDefinition = async (word: string): Promise<string> => {
 
 // 9. Get Phonics Breakdown
 export const getPhonicsBreakdown = async (word: string): Promise<string> => {
+    const lowerWord = word.toLowerCase().trim();
+    if (phonicsCache[lowerWord]) return phonicsCache[lowerWord];
+
     try {
         const ai = getClient();
         const prompt = `
@@ -329,7 +345,9 @@ export const getPhonicsBreakdown = async (word: string): Promise<string> => {
             model: "gemini-3-flash-preview",
             contents: prompt
         });
-        return response.text?.trim() || word.split('').join(' - ');
+        const phonics = response.text?.trim() || word.split('').join(' - ');
+        phonicsCache[lowerWord] = phonics;
+        return phonics;
     } catch (e) {
         console.error("Phonics Error:", e);
         return word.split('').join(' - ');
