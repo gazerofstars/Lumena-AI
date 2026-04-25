@@ -182,6 +182,7 @@ const ActiveSession: React.FC<{
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [cameraActive, setCameraActive] = useState(false);
   const [focusStatus, setFocusStatus] = useState<'Active' | 'Distracted' | 'Analyzing' | 'Absent'>('Active');
+  const [lastCheckTime, setLastCheckTime] = useState<string | null>(null);
   const [aiMessage, setAiMessage] = useState<string>("Ready to focus? I'm here with you.");
   
   // Modal States
@@ -321,49 +322,65 @@ const ActiveSession: React.FC<{
 
   // Focus Check Logic
   const checkFocus = useCallback(async () => {
-    if (!videoRef.current || !canvasRef.current || !cameraActive) return;
+    if (!videoRef.current || !canvasRef.current || !cameraActive) {
+        console.log("checkFocus early return: refs or camera not ready");
+        return;
+    }
+    
+    const v = videoRef.current;
+    if (v.videoWidth === 0 || v.videoHeight === 0) {
+        console.log("checkFocus early return: video dimensions are 0");
+        return;
+    }
     
     setFocusStatus('Analyzing');
     const ctx = canvasRef.current.getContext('2d');
     if (!ctx) return;
 
-    // Capture frame at a lower resolution for better performance
-    const captureWidth = 400;
-    const aspectRatio = videoRef.current.videoWidth / videoRef.current.videoHeight;
+    // Capture frame at a slightly better resolution for reliability
+    const captureWidth = 640;
+    const aspectRatio = v.videoWidth / v.videoHeight;
     canvasRef.current.width = captureWidth;
     canvasRef.current.height = captureWidth / aspectRatio;
-    ctx.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
+    ctx.drawImage(v, 0, 0, canvasRef.current.width, canvasRef.current.height);
     
-    // Use a lower quality for the JPEG to further reduce size
-    const base64Image = canvasRef.current.toDataURL('image/jpeg', 0.5).split(',')[1];
+    // Use slightly higher quality
+    const base64Image = canvasRef.current.toDataURL('image/jpeg', 0.7).split(',')[1];
     
     try {
+        console.log("Sending frame to Gemini for analysis...");
         const result = await analyzeFocus(base64Image);
+        console.log("Analysis result:", result);
+        setLastCheckTime(new Date().toLocaleTimeString());
         
         if (result.status === 'ABSENT') {
             setFocusStatus('Absent');
-            handleMissingStudent(); // Triggers Red Overlay + Beep
+            handleMissingStudent(); 
         } else if (result.status === 'DISTRACTED') {
             setFocusStatus('Distracted');
             setDistractionCount(prev => prev + 1);
-            // Triggers Red Stretch Modal + Beep
-            triggerExercise(true, result.message || "Distraction detected. Quick reset!");
+            triggerExercise(true, result.message || "Focus slipping! Quick reset?");
         } else {
             setFocusStatus('Active');
-            setAiMessage(result.message);
+            if (result.message === "QUOTA_EXCEEDED") {
+                setAiMessage("My focus sensor is resting for a moment... (Limit Reached)");
+            } else if (result.message) {
+                setAiMessage(result.message);
+            }
         }
 
     } catch (e) {
+        console.error("Error in checkFocus:", e);
         setFocusStatus('Active');
     }
 
   }, [cameraActive]);
 
-  // Check focus every 05 seconds if active and not already interrupted
+  // Check focus every 10 seconds if active and not already interrupted
   useEffect(() => {
     let focusInterval: any;
     if (isActive && cameraActive && !isDistractedMode && !showExercise) {
-        focusInterval = setInterval(checkFocus, 5000); 
+        focusInterval = setInterval(checkFocus, 10000); 
     }
     return () => clearInterval(focusInterval);
   }, [isActive, cameraActive, checkFocus, isDistractedMode, showExercise]);
@@ -495,10 +512,17 @@ const ActiveSession: React.FC<{
             <canvas ref={canvasRef} className="hidden" />
             
             {/* Overlay UI */}
-            <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center">
-                <div className={`flex items-center gap-2 px-3 py-1 rounded-full backdrop-blur-md text-xs font-bold text-white ${focusStatus === 'Active' ? 'bg-green-100/30' : (focusStatus === 'Distracted' || focusStatus === 'Absent') ? 'bg-red-500/70' : 'bg-blue-500/50'}`}>
-                    {focusStatus === 'Analyzing' ? <Loader className="animate-spin" size={12} /> : <Eye size={12} />}
-                    {focusStatus}
+            <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end">
+                <div className="flex flex-col gap-2">
+                    <div className={`flex items-center gap-2 px-3 py-1 rounded-full backdrop-blur-md text-xs font-bold text-white w-fit ${focusStatus === 'Active' ? 'bg-green-100/30' : (focusStatus === 'Distracted' || focusStatus === 'Absent') ? 'bg-red-500/70' : 'bg-blue-500/50'}`}>
+                        {focusStatus === 'Analyzing' ? <Loader className="animate-spin" size={12} /> : <Eye size={12} />}
+                        {focusStatus}
+                    </div>
+                    {lastCheckTime && (
+                        <div className="text-[10px] text-white/60 bg-black/20 px-2 py-0.5 rounded-full w-fit backdrop-blur-sm">
+                            Last check: {lastCheckTime}
+                        </div>
+                    )}
                 </div>
                 {/* Dev Tool: Simulations */}
                 <div className="opacity-0 group-hover:opacity-100 flex flex-col gap-2 items-end">

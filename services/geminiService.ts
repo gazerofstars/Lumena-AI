@@ -194,8 +194,12 @@ export const analyzeFocus = async (imageBase64: string): Promise<{status: 'FOCUS
         if (response.text) {
             return JSON.parse(response.text);
         }
-    } catch (e) {
+    } catch (e: any) {
         console.error("Vision Error", e);
+        const msg = e.message || String(e);
+        if (msg.includes("quota") || msg.includes("limit")) {
+            return { status: 'FOCUSED', message: "QUOTA_EXCEEDED" };
+        }
     }
     
     return { status: 'FOCUSED', message: "Keep up the great work!" };
