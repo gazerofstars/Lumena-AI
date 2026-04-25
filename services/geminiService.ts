@@ -1,5 +1,5 @@
 
-import { GoogleGenAI, Modality, Type } from "@google/genai";
+import { GoogleGenAI, Modality, Type, ThinkingLevel } from "@google/genai";
 import { Task, StudyLog } from "../types";
 
 const getClient = () => {
@@ -171,6 +171,7 @@ export const analyzeFocus = async (imageBase64: string): Promise<{status: 'FOCUS
             },
             config: {
                 systemInstruction,
+                thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
                 responseMimeType: "application/json",
                 responseSchema: {
                     type: Type.OBJECT,

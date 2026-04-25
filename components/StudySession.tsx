@@ -313,7 +313,10 @@ const ActiveSession: React.FC<{
   const handleImBack = () => {
       setIsDistractedMode(false);
       setIsActive(true); 
+      setFocusStatus('Active');
       setAiMessage("Welcome back! Let's get into the zone.");
+      // Trigger an immediate check to confirm presence
+      setTimeout(checkFocus, 500); 
   };
 
   // Focus Check Logic
