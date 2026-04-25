@@ -1,0 +1,86 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Users ---
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && isValidUser(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['points', 'streak', 'tasksCompleted', 'badges', 'name', 'avatar', 'superpower', 'bio'])
+      );
+
+      function isValidUser(data) {
+        return data.uid == request.auth.uid 
+            && data.name is string && data.name.size() <= 50
+            && data.points is number
+            && data.streak is number;
+      }
+    }
+
+    // --- Tasks ---
+    match /users/{userId}/tasks/{taskId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidTask(incoming()) && isValidId(taskId);
+      allow update: if isOwner(userId) && isValidTask(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['completed', 'title', 'description', 'estimatedTime'])
+      );
+      allow delete: if isOwner(userId);
+
+      function isValidTask(data) {
+        return data.title is string && data.title.size() <= 200
+            && data.completed is bool;
+      }
+    }
+
+    // --- Study Logs ---
+    match /users/{userId}/studyLogs/{logId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidLog(incoming()) && isValidId(logId);
+      // Logs are generally immutable once written, but allow delete if needed
+      allow delete: if isOwner(userId);
+
+      function isValidLog(data) {
+        return data.taskTitle is string && data.taskTitle.size() <= 200
+            && data.durationMinutes is number
+            && data.completed is bool;
+      }
+    }
+
+    // --- Glossary ---
+    match /users/{userId}/glossary/{itemId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidGlossary(incoming()) && isValidId(itemId);
+      allow delete: if isOwner(userId);
+
+      function isValidGlossary(data) {
+        return data.word is string && data.word.size() <= 100
+            && data.definition is string && data.definition.size() <= 1000;
+      }
+    }
+  }
+}

@@ -3,7 +3,8 @@ import React, { useState } from 'react';
 import { useAccessibility } from './AccessibilityContext';
 import { useGamification } from './GamificationContext';
 import { FontType, ThemeType, View } from '../types';
-import { Check, Type, Palette, Monitor, Book, Plus, Trash2, AlertTriangle, RefreshCcw, Sparkles, Shield } from 'lucide-react';
+import { useAuth } from './AuthContext';
+import { Check, Type, Palette, Monitor, Book, Plus, Trash2, AlertTriangle, RefreshCcw, Sparkles, Shield, LogOut, User } from 'lucide-react';
 
 // Import setView prop to navigate
 interface SettingsPageProps {
@@ -12,7 +13,8 @@ interface SettingsPageProps {
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({ setView }) => {
   const { settings, updateSettings, resetToDefaults } = useAccessibility();
-  const { glossary, addToGlossary, removeFromGlossary } = useGamification();
+  const { glossary, addToGlossary, removeFromGlossary, userProfile } = useGamification();
+  const { logoutUser, user } = useAuth();
 
   // Manual Glossary Add State
   const [newWord, setNewWord] = useState('');
@@ -43,6 +45,17 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ setView }) => {
   return (
     <div className="max-w-5xl mx-auto p-6 pb-24 animate-fade-in">
       <div className="text-center mb-10">
+        <div className="flex flex-col items-center gap-4 mb-6">
+          <div className="w-20 h-20 bg-lumena-blue rounded-full border-4 border-white shadow-lg flex items-center justify-center text-4xl">
+            {userProfile.avatar}
+          </div>
+          <div>
+            <h2 className="text-3xl font-bold text-lumena-dark font-comic">{userProfile.name}</h2>
+            <p className="text-gray-500 flex items-center justify-center gap-2">
+              <User size={14} /> {user?.email}
+            </p>
+          </div>
+        </div>
         <h2 className="text-4xl font-bold mb-2 font-comic">App Settings ⚙️</h2>
         <p className="opacity-80 text-lg">Customize Lumena to fit your unique style.</p>
       </div>
@@ -278,9 +291,16 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ setView }) => {
                     </div>
                     <button 
                         onClick={resetToDefaults}
-                        className="w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl font-bold shadow-md transition flex items-center justify-center gap-2"
+                        className="w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl font-bold shadow-md transition flex items-center justify-center gap-2 mb-4"
                     >
                         <RefreshCcw size={18} /> Reset Settings
+                    </button>
+
+                    <button 
+                        onClick={logoutUser}
+                        className="w-full bg-white border-2 border-gray-200 text-gray-600 hover:bg-gray-50 py-3 rounded-xl font-bold transition flex items-center justify-center gap-2"
+                    >
+                        <LogOut size={18} /> Sign Out
                     </button>
                  </div>
              </div>

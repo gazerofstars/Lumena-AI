@@ -18,7 +18,7 @@ interface RoadmapProps {
 
 export const Roadmap: React.FC<RoadmapProps> = ({ tasks, setTasks, startStudySession, onTaskComplete, showConfetti }) => {
   const { settings } = useAccessibility();
-  const { unlockBadge } = useGamification();
+  const { unlockBadge, saveTask, deleteTask } = useGamification();
   const [brainDump, setBrainDump] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [speakingTaskId, setSpeakingTaskId] = useState<string | null>(null);
@@ -86,7 +86,10 @@ export const Roadmap: React.FC<RoadmapProps> = ({ tasks, setTasks, startStudySes
     setIsLoading(true);
     try {
       const generatedTasks = await generateRoadmap(brainDump);
-      setTasks(generatedTasks);
+      // Save all generated tasks to Firestore
+      for (const task of generatedTasks) {
+        await saveTask(task);
+      }
     } catch (error) {
       alert("Something went wrong generating the plan. Please try again.");
     } finally {
@@ -161,8 +164,11 @@ export const Roadmap: React.FC<RoadmapProps> = ({ tasks, setTasks, startStudySes
     onTaskComplete(task);
   };
 
-  const handleReset = () => {
-      setTasks([]);
+  const handleReset = async () => {
+      // Delete all tasks from Firestore
+      for (const task of tasks) {
+        await deleteTask(task.id);
+      }
       setBrainDump('');
       setShowGrandPrizeModal(false);
   };
